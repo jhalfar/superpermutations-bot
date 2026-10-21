@@ -1,0 +1,166 @@
+{
+ "format": "superperm-records/1",
+ "records": {
+  "10": [
+   {
+    "date": "2026-10-06",
+    "kind": "word",
+    "length": 4034855,
+    "sha256": "542a3778662f972a4ea7b9461a9334775f31303a0d8b1a7913169d8beea444ff",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-10-4034855.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-09/10",
+    "kind": "claim",
+    "length": 4034873,
+    "sha256": null,
+    "source": "as in README.md",
+    "submitter": "rumstd",
+    "verified": false
+   }
+  ],
+  "11": [
+   {
+    "date": "2026-10-06",
+    "kind": "word",
+    "length": 43930578,
+    "sha256": "f7d3122f350d56d41945961f9abf36453420bd3068a3941b424f9c0447c7aef5",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-11-43930578.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-10",
+    "kind": "claim",
+    "length": 43930624,
+    "sha256": null,
+    "source": "github.com/Tholsh/superpermutation_study",
+    "submitter": "Theo H.",
+    "verified": false
+   }
+  ],
+  "12": [
+   {
+    "date": "2026-10-20",
+    "kind": "word",
+    "length": 522736969,
+    "sha256": "eb4861f06f9eaa652bf355ff5e3eac2a3080c1e7dee72f527e517c949b2d6918",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-12-522736969.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-10-06",
+    "kind": "word",
+    "length": 522737175,
+    "sha256": "06ff5325b167f7e31a141c7e3f9fb58111e405eb3b7b35ef1ff8e2004ca309da",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-12-522737175.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-10",
+    "kind": "claim",
+    "length": 522745531,
+    "sha256": null,
+    "source": "github.com/Tholsh/superpermutation_study",
+    "submitter": "Theo H.",
+    "verified": false
+   }
+  ],
+  "13": [
+   {
+    "date": "2026-10-07",
+    "kind": "word",
+    "length": 6747802393,
+    "sha256": "ff3edea35fc72aee247d2f3c585a137b3abfbcba86b484c824b501a47d9e1d4c",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-13-6747802393.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-09/10",
+    "kind": "claim",
+    "length": 6747918066,
+    "sha256": null,
+    "source": "github.com/jaypantone/superperm-upper-43-80",
+    "submitter": "Jay Pantone",
+    "verified": false
+   }
+  ],
+  "14": [
+   {
+    "date": "2026-10-20",
+    "kind": "claim",
+    "length": 93904804425,
+    "sha256": null,
+    "source": "https://github.com/jhalfar/superpermutations/tree/main/recipes/n14",
+    "submitter": "Jakub Halfar",
+    "verified": false
+   },
+   {
+    "date": "2026-10-17",
+    "kind": "recipe",
+    "length": 93904936032,
+    "sha256": "b45da5102bfd8397fa88e77a17eebe03e29a10f70bd61c35ef42b1723feece13",
+    "source": "superperm-2lift/1 recipe, 2026-10-17",
+    "submitter": "William Echols",
+    "verified": true
+   }
+  ],
+  "7": [
+   {
+    "date": "2026-09",
+    "kind": "claim",
+    "length": 5905,
+    "sha256": null,
+    "source": "forum thread D5sKkV2jBuc (as in DISCOVERIES.md)",
+    "submitter": "Teodorescu",
+    "verified": false
+   }
+  ],
+  "8": [
+   {
+    "date": "2026-10-21",
+    "kind": "claim",
+    "length": 46173,
+    "sha256": null,
+    "source": "superpermutators/superperm pull request (Theo H.)",
+    "submitter": "Theo H.",
+    "verified": false
+   },
+   {
+    "date": "2026-10-20",
+    "kind": "word",
+    "length": 46174,
+    "sha256": "50d9bb150ffcf28482e4663f9d8a5ff449fae2de2ef09643eefd922fe1b224aa",
+    "source": "https://github.com/jhalfar/superpermutations/blob/main/words/superpermutation-8-46174.txt.xz",
+    "submitter": "Jakub Halfar",
+    "verified": true
+   },
+   {
+    "date": "2026-09/10",
+    "kind": "claim",
+    "length": 46181,
+    "sha256": null,
+    "source": "github.com/jaypantone/superperm-upper-43-80",
+    "submitter": "Jay Pantone",
+    "verified": false
+   }
+  ],
+  "9": [
+   {
+    "date": "2026-09/10",
+    "kind": "claim",
+    "length": 408731,
+    "sha256": null,
+    "source": "as in README.md",
+    "submitter": "rumstd",
+    "verified": false
+   }
+  ]
+ },
+ "updated": "2026-10-24 02:41:28"
+}

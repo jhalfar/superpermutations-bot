@@ -1,0 +1,14 @@
+.git
+.github
+.env
+testdata
+work
+data
+**/__pycache__
+bin
+docs
+action
+tests
+tools
+live_test_files
+logs

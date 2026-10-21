@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+/bin/
+/testdata/
+/work/
+/data/
+/live_test_files/
+/logs/

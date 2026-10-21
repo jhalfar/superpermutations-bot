@@ -1,0 +1,28 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    init: true                  # reaps zombies; the bot kills whole process groups of a check
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    # SUPERPERM_MEM_GB (in .env) must stay about 1.5 GB below mem_limit: the limit applies to one check pass,
+    # the bot process and the generator need room on top of it. n = 14 unsharded needs about 12 GB.
+    mem_limit: 16g
+    cpus: 4
+    volumes:
+      - bot-data:/data          # records.json
+      - bot-work:/work          # temporary files of running checks (TMPDIR)
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  bot-data:
+  bot-work:

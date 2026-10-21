@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- superpermutations-bot avatar: the window of n letters sliding over a word, and the check mark -->
+  <rect width="512" height="512" fill="#0e3b43"/>
+  <circle cx="256" cy="256" r="238" fill="#124b55"/>
+  <!-- the word 123121321 (the shortest superpermutation of 3 symbols); the window shows the permutation 312 -->
+  <g font-family="Consolas, DejaVu Sans Mono, monospace" font-size="54" font-weight="700" text-anchor="middle">
+    <text x="88"  y="196" fill="#7fb7bd">1</text>
+    <text x="130" y="196" fill="#7fb7bd">2</text>
+    <text x="172" y="196" fill="#f4f1e8">3</text>
+    <text x="214" y="196" fill="#f4f1e8">1</text>
+    <text x="256" y="196" fill="#f4f1e8">2</text>
+    <text x="298" y="196" fill="#7fb7bd">1</text>
+    <text x="340" y="196" fill="#7fb7bd">3</text>
+    <text x="382" y="196" fill="#7fb7bd">2</text>
+    <text x="424" y="196" fill="#7fb7bd">1</text>
+  </g>
+  <rect x="153" y="140" width="122" height="76" rx="14" fill="none" stroke="#f2b134" stroke-width="8"/>
+  
+  <!-- check mark -->
+  <path d="M162 322 L228 386 L356 258" fill="none" stroke="#f2b134" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

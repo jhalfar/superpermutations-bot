@@ -1,0 +1,32 @@
+name: Superpermutation check
+description: >
+  Finds superpermutation files in the repository (words superpermutation-N-L.txt[.xz] or .spra.xz, and recipes *.splan.json.xz),
+  checks with a streaming checker that each one contains every permutation of its n symbols, compares n, the length
+  and the recipe footer, and writes a table with the SHA-256 of every word to the job summary. A recipe is data for the
+  decoders built from this repository's checker/ and gens/; nothing from the checked repository is executed. n = 14 needs about 12 GB of
+  memory and 25 to 45 minutes per file (the standard 16 GB runner is enough).
+inputs:
+  patterns:
+    description: Comma-separated file patterns to check.
+    default: superpermutation-*.txt,superpermutation-*.txt.xz,superpermutation-*.spra.xz,*.splan.json.xz
+  threads:
+    description: Threads of the checker (words with n <= 12; larger n uses the one-thread checker).
+    default: "2"
+outputs:
+  results:
+    description: Path of the JSON file with one entry per checked word.
+    value: superperm-results.json
+runs:
+  using: composite
+  steps:
+    - name: Build the checkers and generators
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/superperm-bin"
+        SUPERPERM_SRC="$GITHUB_ACTION_PATH/../gens" SUPERPERM_BIN="$RUNNER_TEMP/superperm-bin" python3 -I "$GITHUB_ACTION_PATH/../checker/build.py"
+    - name: Check the words and recipes
+      shell: bash
+      run: >
+        SUPERPERM_SRC="$GITHUB_ACTION_PATH/../gens" SUPERPERM_BIN="$RUNNER_TEMP/superperm-bin"
+        python3 -I "$GITHUB_ACTION_PATH/scan.py" "$GITHUB_WORKSPACE"
+        --patterns "${{ inputs.patterns }}" --threads "${{ inputs.threads }}" --out superperm-results.json
