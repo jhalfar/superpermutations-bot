@@ -708,8 +708,9 @@ def record_details_card(table, n, viewer=None):
     return _view(COLOURS["record"], *items)
 
 
-def announcement_card(n, length, previous, user_id, submitter, filename, sha, url=None):
-    """the card in the records channel (gold)."""
+def announcement_card(n, length, previous, user_id, submitter, filename, sha, url=None, role_id=None):
+    """the card in the records channel (gold). role_id: the role of this n (SUPERPERM_N_ROLES), mentioned on the first
+    line; the sender allows exactly that role to be pinged."""
     if previous:
         diff = "%s shorter than the previous record (%s, %s)" % (
             fmt_int(previous["length"] - length), fmt_int(previous["length"]), safe_text(previous["submitter"], 30))
@@ -717,6 +718,8 @@ def announcement_card(n, length, previous, user_id, submitter, filename, sha, ur
         diff = "the first verified word for this n"
     items = [_t("%s **New record for n = %d**\n%s letters %s %s\nby %s %s `%s` %s SHA-256 `%s`" % (
         EMOJI["record"], n, fmt_int(length), DOT, diff, who(user_id, submitter), DOT, clean_name(filename), DOT, sha))]
+    if role_id:
+        items.insert(0, _t("<@&%d>" % int(role_id)))
     if url:
         items.append(_row(link_button("Open the check", url)))
     return _view(COLOURS["record"], *items)

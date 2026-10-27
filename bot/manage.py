@@ -10,6 +10,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # python -I d
 
 import discord
 
+import board
 import history
 import records
 import ui
@@ -132,6 +133,7 @@ async def handle_rename(state, kind, arg, raw, interaction):
             await reply(interaction, ui.notice_card("Not allowed", "Only the submitter of an entry or an administrator can rename it."))
             return
         records.set_label(cfg.records_path, n, r, new)
+        await board.refresh(state)
         if str(e.get("submitter_id") or "") != str(uid):
             await audit_say(state, "<@%s> renamed the entry of n = %s (%s letters) of %s to `%s`" % (
                 uid, n, "{:,}".format(e["length"]), ui.safe_text(e["submitter"], 40), new))
@@ -198,6 +200,7 @@ async def handle_x(state, kind, arg, value, interaction):
                 await reply(interaction, ui.notice_card("Not allowed", "You cannot remove this entry."))
                 return
             records.remove(cfg.records_path, n, r)
+            await board.refresh(state)
             owner = str(e.get("submitter_id") or "") == str(uid)
             if is_record or not owner:
                 await audit_say(state, "<@%s> removed %sthe entry of n = %s (%s letters, by %s) from the records" % (

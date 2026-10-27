@@ -1,5 +1,5 @@
 """submit.py - a verified word goes into the records table: `submit: true` or the Add to records button, the Contributor
-role, the announcement of a new record.
+role, the announcement of a new record (with the role of its n, SUPERPERM_N_ROLES), the board (board.py).
 """
 import logging
 from types import SimpleNamespace
@@ -10,6 +10,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # python -I d
 
 import discord
 
+import board
 import history
 import records
 import ui
@@ -116,9 +117,12 @@ async def do_submit(state, ctx, interaction):
         if role_text:
             lines.append(role_text)
         if state.announce:                         # a private check gets no link: the card is a direct message
+            rid = board.role_for_n(cfg.n_roles, res["n"])
             await safe(state.announce, ui.announcement_card(res["n"], res["length"], out["previous"], ctx.user_id,
                                                             ctx.user_name, job.name, res["sha256"],
-                                                            None if ctx.private else ctx.card.url))
+                                                            None if ctx.private else ctx.card.url, role_id=rid), rid)
+    if out["status"] in ("new_record", "equal", "longer"):   # the table changed: the board goes under the announcement
+        await board.refresh(state)
     ctx.added = out["status"] != "invalid"
     if ctx.added and ctx.hid is not None:
         hist_try("mark_added", history.mark_added, cfg.history_path, ctx.hid)

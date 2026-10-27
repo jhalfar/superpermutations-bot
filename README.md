@@ -68,6 +68,8 @@ Environment variables; Docker reads them from `.env` (see [.env.example](.env.ex
 | `SUPERPERM_CONTRIBUTOR_ROLE` | none | role given to the sender of a new record (the bot needs Manage Roles, and its role must be above this one) |
 | `SUPERPERM_SUBMIT_ROLE` | none | if set, only members with this role can add words to the table; anyone can still check |
 | `SUPERPERM_AUDIT_CHANNEL` | none | channel for a copy of every private check (give it to admins only) |
+| `SUPERPERM_BOARD` | off | `1`: keep the table (the card of `/records`) as the last message of `SUPERPERM_CHANNEL`, updated after every change |
+| `SUPERPERM_N_ROLES` | none | roles that a new record pings, by n: `1-6:ROLE_ID,7:ROLE_ID,...,15-99:ROLE_ID` (the role must be mentionable, or the bot needs Mention All Roles) |
 | `SUPERPERM_MEM_GB` | 14 | memory for one pass of a check; with less, long checks are split into several passes |
 | `SUPERPERM_MAX_SHARDS`, `SUPERPERM_MAX_HOURS` | 8, 6 | refuse a check that needs more passes or more time than this |
 | `SUPERPERM_MAX_N`, `SUPERPERM_QUEUE` | 14, 6 | the largest n; the number of waiting jobs per lane |

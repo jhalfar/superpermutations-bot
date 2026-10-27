@@ -30,6 +30,7 @@ sys.path.insert(0, BOT)
 
 import discord  # noqa: E402
 import check_any  # noqa: E402
+import board  # noqa: E402
 import discord_bot as bot  # noqa: E402
 import records  # noqa: E402
 import ui  # noqa: E402
@@ -266,6 +267,7 @@ class Base(unittest.TestCase):
         shutil.copyfile(os.path.join(BOT, "records.json"), self.rec)
         self.calls = []
         self.announced = []
+        self.pinged = []
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -287,8 +289,9 @@ class Base(unittest.TestCase):
         st = bot.State(cfg, runner or (lambda path, job=None: self.calls.append(path) or good_result()),
                        fetch or (lambda u, t: self.fail("no network in tests")))
 
-        async def announce(view):
+        async def announce(view, role_id=None):
             self.announced.append(view)
+            self.pinged.append(role_id)
         st.announce = announce
         return st
 
@@ -1920,6 +1923,130 @@ class TestRefreshInterval(unittest.TestCase):
         job = SimpleNamespace(progress=(1, 1, 100), plan=SimpleNamespace(length=1000, est_len=1000), t_start=100.0)
         lines = ui.running_lines(job, now=130.0)
         self.assertIn("<t:130:R>", lines[-1])
+
+
+class BoardChannel:
+    """the records channel as board.py sees it: messages in order, history(limit=1), fetch_message, send; messages can
+    be edited and deleted. Every send and edit must allow no mention at all."""
+
+    def __init__(self):
+        self.msgs, self.next_id, self.sends, self.edits, self.deletes = [], 100, 0, 0, 0
+
+    def post(self, text):                          # a message by somebody else (or an announcement)
+        return self._add(text)
+
+    def _add(self, view):
+        ch = self
+
+        class Msg:
+            def __init__(m):
+                m.id, m.view = ch.next_id, view
+
+            async def edit(m, *, view=None, allowed_mentions=None, **kw):
+                check_sent(None, view, allowed_mentions)
+                m.view = view
+                ch.edits += 1
+
+            async def delete(m):
+                ch.msgs.remove(m)
+                ch.deletes += 1
+        self.next_id += 1
+        m = Msg()
+        self.msgs.append(m)
+        return m
+
+    async def send(self, content=None, *, view=None, allowed_mentions=None, **kw):
+        check_sent(content, view, allowed_mentions)
+        self.sends += 1
+        return self._add(view)
+
+    async def fetch_message(self, mid):
+        for m in self.msgs:
+            if m.id == mid:
+                return m
+        raise LookupError("unknown message %s" % mid)
+
+    def history(self, limit=1):
+        async def gen():
+            for m in list(reversed(self.msgs))[:limit]:
+                yield m
+        return gen()
+
+
+class TestBoard(Base):
+    def test_parse_n_roles(self):
+        r = board.parse_n_roles("1-6:11, 7:22,15-99:33")
+        self.assertEqual(r, [(1, 6, 11), (7, 7, 22), (15, 99, 33)])
+        self.assertEqual([board.role_for_n(r, n) for n in (5, 7, 8, 16)], [11, 22, None, 33])
+        self.assertEqual(board.parse_n_roles(""), [])
+        for bad in ("7", "a:1", "9-7:1", "7:x"):
+            with self.assertRaises(ValueError):
+                board.parse_n_roles(bad)
+
+    def test_new_record_pings_the_role_of_its_n(self):
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=408000, sha256="cd" * 32),
+                        n_roles="1-8:11,9:22")
+        i = FakeInteraction(uid=7, name="alice")
+        self.run_async(bot.handle_check(st, i, attachment=self.att(9), submit=True))
+        self.assertEqual(self.pinged, [22])
+        self.assertIn("<@&22>", ui.texts(self.announced[0])[0])
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=407000, sha256="ce" * 32))
+        self.run_async(bot.handle_check(st, FakeInteraction(uid=7, name="alice"), attachment=self.att(9), submit=True))
+        self.assertEqual(self.pinged, [22, None])                       # no SUPERPERM_N_ROLES: no ping
+        self.assertNotIn("<@&", "\n".join(ui.texts(self.announced[1])))
+
+    def test_send_announcement_allows_only_that_role(self):
+        seen = []
+
+        class Ch:
+            async def send(self, content=None, *, view=None, allowed_mentions=None, **kw):
+                seen.append(allowed_mentions)
+        self.run_async(bot.send_announcement(Ch(), None, 22))
+        self.run_async(bot.send_announcement(Ch(), None, None))
+        a, b = seen
+        self.assertFalse(a.everyone or a.users or a.replied_user)
+        self.assertEqual([r.id for r in a.roles], [22])
+        self.assertFalse(b.everyone or b.users or b.roles or b.replied_user)
+
+    def test_board_stays_the_last_message(self):
+        ch = BoardChannel()
+        st = self.state(board=True, board_path=os.path.join(self.tmp, "board.json"))
+
+        async def channel():
+            return ch
+        st.board_channel = channel
+        ch.post("old talk")
+        self.run_async(board.refresh(st))                     # first board: sent, id saved
+        self.assertEqual((ch.sends, ch.edits, ch.deletes), (1, 0, 0))
+        first = ch.msgs[-1].id
+        self.assertEqual(board.load_id(st.cfg.board_path), first)
+        self.assertIn("Shortest known superpermutations", "\n".join(ui.texts(ch.msgs[-1].view)))
+        self.run_async(board.refresh(st))                     # still the last message: edited in place
+        self.assertEqual((ch.sends, ch.edits, ch.deletes), (1, 1, 0))
+        ch.post("announcement")                               # something came after it: old board deleted, new one sent
+        self.run_async(board.refresh(st))
+        self.assertEqual((ch.sends, ch.edits, ch.deletes), (2, 1, 1))
+        self.assertNotIn(first, [m.id for m in ch.msgs])
+        self.assertEqual(ch.msgs[-1].id, board.load_id(st.cfg.board_path))
+        ch.msgs.remove(ch.msgs[-1])                           # somebody deleted the board: a new one is sent
+        self.run_async(board.refresh(st))
+        self.assertEqual((ch.sends, ch.deletes), (3, 1))
+
+    def test_board_follows_a_new_record_and_is_off_by_default(self):
+        ch = BoardChannel()
+
+        async def channel():
+            return ch
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=408000, sha256="cd" * 32))
+        st.board_channel = channel
+        self.run_async(bot.handle_check(st, FakeInteraction(uid=7, name="alice"), attachment=self.att(9), submit=True))
+        self.assertEqual(ch.sends, 0)                         # SUPERPERM_BOARD not set: nothing posted
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=407000, sha256="ce" * 32), board=True,
+                        board_path=os.path.join(self.tmp, "b.json"))
+        st.board_channel = channel
+        self.run_async(bot.handle_check(st, FakeInteraction(uid=7, name="alice"), attachment=self.att(9), submit=True))
+        self.assertEqual(ch.sends, 1)
+        self.assertIn("407,000", "\n".join(ui.texts(ch.msgs[-1].view)))
 
 
 if __name__ == "__main__":

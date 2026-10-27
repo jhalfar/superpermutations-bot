@@ -10,6 +10,7 @@ import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "checker"))  # check_any, registry, ...
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # python -I drops the script folder
 
+import board
 import check_any
 import history
 import records
@@ -25,7 +26,7 @@ REDIRECT_HOSTS = ALLOWED_HOSTS | {"objects.githubusercontent.com", "release-asse
 ALLOWED_EXT = (".splan.json.xz", ".splan.json", ".spra.xz", ".spra", ".txt.xz", ".txt")
 LANES = ("fast", "slow")
 SLOW_FROM_N = 13          # n >= 13 goes to the slow lane
-VERSION = "1.0"
+VERSION = "1.1"
 BIG_HINT = "Put the file on github.com or gitlab.com and give the link instead."
 
 
@@ -59,6 +60,13 @@ class Config:
         self.submit_role = int(sr) if sr else None              # only members with this role may add to the records
         ac = kw.get("audit_channel_id", env("SUPERPERM_AUDIT_CHANNEL"))
         self.audit_channel_id = int(ac) if ac else None            # a copy of every private check goes there (optional)
+        bd = kw.get("board", env("SUPERPERM_BOARD"))
+        self.board = str(bd).lower() in ("1", "true", "yes", "on") if bd is not None else False   # table as last message
+        self.board_path = kw.get("board_path") or env("SUPERPERM_BOARD_FILE") or board.default_path(self.records_path)
+        try:                                                        # n -> role pinged by a new record (optional)
+            self.n_roles = board.parse_n_roles(kw.get("n_roles", env("SUPERPERM_N_ROLES") or ""))
+        except ValueError as e:
+            sys.exit(str(e))
         self.settings_path = kw.get("settings_path") or env("SUPERPERM_SETTINGS") or settings.default_path(self.records_path)
         self.default_visibility = kw.get("default_visibility", settings.DEFAULT)      # for users who never chose
         self.history_path = kw.get("history_path") or env("SUPERPERM_HISTORY") or history.default_path(self.records_path)

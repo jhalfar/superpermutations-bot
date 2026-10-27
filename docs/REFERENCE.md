@@ -12,6 +12,7 @@ The details behind README.md: what each card and command does, limits, sharding,
 | `bot/config.py`, `bot/state.py` | the settings from the environment; what the bot keeps in memory |
 | `bot/cards.py` | the job card message (posted once, then edited), its refresh, replies, permissions |
 | `bot/submit.py`, `bot/manage.py` | Add to records, the Contributor role, announcements; `/history` and the management of entries |
+| `bot/board.py` | the table as the last message of the records channel (`SUPERPERM_BOARD`), the role pinged per n (`SUPERPERM_N_ROLES`) |
 | `bot/downloads.py` | links: allowed hosts, redirects, size cap, deadlines |
 | `bot/ui.py` | the Discord cards (Components V2) as pure functions: job, queue, records, about, refusals, announcement, panel |
 | `bot/records.py`, `bot/records.json` | the table; its seed for a new install |
@@ -127,6 +128,10 @@ Create the application and invite the bot with the `bot` and `applications.comma
 
 * Send Messages, Embed Links, Read Message History. Together they are the integer 83,968 (2,048 + 16,384 + 65,536).
   The thread permissions of the first test version are not needed any more: there are no threads.
+* With `SUPERPERM_BOARD=1` nothing more: the bot reads the newest message of the records channel (Read Message
+  History) and deletes only its own board message, which needs no permission. With `SUPERPERM_N_ROLES` the roles must
+  be mentionable, or the bot needs Mention @everyone, @here and All Roles (131,072); the announcement allows exactly the
+  role of its n to be pinged, never a user, @everyone or @here.
 * Manage Roles, only if `SUPERPERM_CONTRIBUTOR_ROLE` is set, and the bot's own role must be above the Contributor role
   in the server's role list. With it the integer is 268,519,424 (83,968 + 268,435,456; the arithmetic is in
   docs/DEPLOY.md). If this is wrong the bot says so on the card and carries on. It never removes a role.

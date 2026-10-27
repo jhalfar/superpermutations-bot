@@ -1,4 +1,4 @@
-"""discord_bot.py - Discord front end of superpermutations-bot v1.0.
+"""discord_bot.py - Discord front end of superpermutations-bot v1.1.
 
 Slash commands
   /check [attachment | url] [submit]   check a recipe (*.splan.json.xz), a SPRA word (*.spra, *.spra.xz) or a word (*.txt, *.txt.xz), n <= 14;
@@ -11,7 +11,8 @@ Slash commands
 
 Run:   set DISCORD_TOKEN=...   (environment only; the token is never read from a file and never written)
        optional: SUPERPERM_CHANNEL, SUPERPERM_CONTRIBUTOR_ROLE, SUPERPERM_MEM_GB, SUPERPERM_MAX_N, SUPERPERM_MBPS,
-       SUPERPERM_MAX_HOURS, SUPERPERM_QUEUE, SUPERPERM_MAX_SHARDS, SUPERPERM_RECORDS   (see README.md)
+       SUPERPERM_MAX_HOURS, SUPERPERM_QUEUE, SUPERPERM_MAX_SHARDS, SUPERPERM_RECORDS, SUPERPERM_BOARD,
+       SUPERPERM_N_ROLES   (see README.md)
        python -I bot/discord_bot.py      (from the repository root; scripts/run_bot.ps1, scripts/run_bot.sh read .env)
 
 Every accepted /check gets ONE card, a normal channel message sent with the bot token (channel.send), so it can be edited for
@@ -32,6 +33,7 @@ Modules (all in bot/; this file only builds the client and runs it):
   cards.py      the job card (Card), its refresh, replies, display name and permissions
   commands.py   the handlers: /check and its form, /queue, /cancel, /records, /about, /settings, /panel, job buttons
   submit.py     Add to records / submit: the table, the Contributor role, the announcement
+  board.py      the table as the last message of the records channel; the role of an n that a new record pings
   manage.py     /history, rename and delete of history and records entries, the audit lines
   ui.py         the cards as pure functions; records.py, settings.py, history.py, magic.py
 """
@@ -45,6 +47,7 @@ _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # python -I drops the script folder
 import discord
 
+import board
 import history
 import ui
 from commands import (CheckModal, handle_about, handle_cancel, handle_check, handle_job_button,  # noqa: F401
@@ -61,6 +64,13 @@ from jobs import Job, Plan, Scheduler, plan_job, subprocess_runner, supervise  #
 from state import JobCtx  # noqa: F401,E402
 from submit import do_submit, handle_add  # noqa: F401,E402
 from ui import fmt_dur, fmt_letters  # noqa: F401,E402
+
+
+async def send_announcement(channel, view, role_id=None):
+    """post a new-record card; it may ping only role_id (the role of its n), never a user, @everyone or @here."""
+    roles = [discord.Object(id=int(role_id))] if role_id else False
+    await channel.send(view=view, allowed_mentions=discord.AllowedMentions(everyone=False, users=False, roles=roles,
+                                                                           replied_user=False))
 
 
 def build_client(state):
@@ -93,11 +103,20 @@ def build_client(state):
                     return await ch.guild.fetch_member(user_id)
                 state.find_member = find_member
             if state.cfg.channel_id:
-                async def announce(view):
-                    ch = self.get_channel(state.cfg.channel_id) or await self.fetch_channel(state.cfg.channel_id)
-                    await ch.send(view=view, allowed_mentions=discord.AllowedMentions.none())
+                async def records_channel():
+                    return self.get_channel(state.cfg.channel_id) or await self.fetch_channel(state.cfg.channel_id)
+
+                async def announce(view, role_id=None):
+                    await send_announcement(await records_channel(), view, role_id)
                 state.announce = announce
+                if state.cfg.board:
+                    state.board_channel = records_channel
             await self.tree.sync()
+
+        async def on_ready(self):
+            if not getattr(self, "_board_started", False):     # once per process (on_ready also follows a reconnect)
+                self._board_started = True
+                board.schedule(state)
 
     client = Client()
     tree = client.tree

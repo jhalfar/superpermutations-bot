@@ -1,6 +1,7 @@
 """state.py - the state of the running bot in memory: the scheduler, the job cards whose buttons still work (JobCtx),
-and the hooks the client sets (announce, audit channel, member lookup). A restart drops all of it.
+and the hooks the client sets (announce, audit channel, member lookup, board channel). A restart drops all of it.
 """
+import asyncio
 from collections import OrderedDict
 
 import os as _os, sys as _sys
@@ -46,6 +47,8 @@ class State:
         self.announce = None     # async callable(view), set by the client when a channel is configured
         self.audit_channel = None    # async callable() -> channel of SUPERPERM_AUDIT_CHANNEL, set by the client
         self.find_member = None      # async callable(user_id) -> Member of the records channel's server, or raises
+        self.board_channel = None    # async callable() -> the records channel, set by the client when SUPERPERM_BOARD is on
+        self.board_lock = asyncio.Lock()   # one board refresh at a time (board.py)
         self.cards = OrderedDict()   # job id -> JobCtx, the newest cfg.card_keep
 
     def remember(self, ctx):

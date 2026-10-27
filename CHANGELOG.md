@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1 (2026-10-27)
+
+* `SUPERPERM_BOARD=1`: the table (the card of `/records`, with its select for one n) is kept as the last message of the
+  records channel. After every change of the table (a word added, an entry removed or renamed) and at start the bot edits
+  it if it is still the newest message, or deletes its old board and posts it again under the announcement. The message
+  id is kept in `board.json` next to the records table (`SUPERPERM_BOARD_FILE`). Off by default.
+* `SUPERPERM_N_ROLES`: the announcement of a new record pings the role of its n (`1-6:ID,7:ID,...,15-99:ID`); only that
+  role may be pinged, the submitter's name stays a mention without a ping.
+* `bot/board.py`; tests in `tests/test_bot.py` (`TestBoard`).
+
 ## v1.0 (2026-10-24), first public release, n <= 14
 
 * Recipe format `splan/1` (docs/RECIPE.md) and its decoder; `checker/check_any.py` for words and recipes; the table of
