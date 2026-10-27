@@ -1340,7 +1340,9 @@ class TestClient(Base):
 
     def test_dynamic_items_are_registered_for_restarts(self):
         src = inspect.getsource(bot.build_client)
-        self.assertIn("add_dynamic_items(ui.JobButton, ui.PanelButton, ui.RecordsSelect, ui.SettingsSelect, ui.XButton, ui.XSelect)", src)
+        call = src[src.index("add_dynamic_items("):src.index(")", src.index("add_dynamic_items("))]
+        for name in ("JobButton", "PanelButton", "RecordsSelect", "SettingsSelect", "XButton", "XSelect", "XUserSelect"):
+            self.assertIn("ui.%s" % name, call)
         for cls, cid in ((ui.JobButton, "sp:cancel:12"), (ui.PanelButton, "sp:panel:check"), (ui.RecordsSelect, "sp:records:n")):
             self.assertTrue(cls.__discord_ui_compiled_template__.fullmatch(cid), cid)
 
@@ -2047,6 +2049,66 @@ class TestBoard(Base):
         self.run_async(bot.handle_check(st, FakeInteraction(uid=7, name="alice"), attachment=self.att(9), submit=True))
         self.assertEqual(ch.sends, 1)
         self.assertIn("407,000", "\n".join(ui.texts(ch.msgs[-1].view)))
+
+
+class TestOnBehalf(Base):
+    """v1.2: a verified claim keeps its holder; administrators can check a word for somebody (holder) and later make a
+    member the holder of an entry (Set holder)."""
+
+    def test_claim_verified_keeps_its_holder(self):
+        st = self.state(runner=lambda p, job=None: good_result(n=7, length=5905, sha256="5a" * 32), contributor_role=777)
+        i = FakeInteraction(uid=7, name="jakub")
+        i.guild = FakeGuild([FakeRole(777)])
+        self.run_async(bot.handle_check(st, i, attachment=self.att(7), submit=True))
+        e = records.best_verified(records.load(self.rec), 7)
+        self.assertEqual((e["length"], e["submitter"], e.get("submitter_id"), e["checked_by_id"]), (5905, "Teodorescu", None, "7"))
+        self.assertEqual(i.user.added, [])                                   # no Contributor role for checking a claim
+        self.assertIn("Entered for Teodorescu", i.card.text)
+        a = "\n".join(ui.texts(self.announced[0]))
+        self.assertIn("Record for n = 7 verified", a)
+        self.assertIn("by Teodorescu", a)
+        self.assertIn("checked by <@7>", a)
+        self.assertNotIn("New record", a)
+
+    def test_holder_option_is_for_administrators(self):
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=408000, sha256="cd" * 32))
+        i = FakeInteraction(uid=8, name="bob")
+        self.run_async(bot.handle_check(st, i, attachment=self.att(9), holder="Someone Else"))
+        self.assertIn("only administrators", i.private)
+        self.assertIsNone(records.best_verified(records.load(self.rec), 9))
+        i = FakeInteraction(uid=9, name="admin", perms={"administrator": True})
+        self.run_async(bot.handle_check(st, i, attachment=self.att(9), holder="  Andrei   Teodorescu "))
+        e = records.best_verified(records.load(self.rec), 9)              # submit implied by holder
+        self.assertEqual((e["submitter"], e.get("submitter_id"), e["checked_by"], e["checked_by_id"]),
+                         ("Andrei Teodorescu", None, "admin", "9"))
+        a = "\n".join(ui.texts(self.announced[-1]))
+        self.assertIn("Record for n = 9 verified", a)
+        self.assertIn("by Andrei Teodorescu", a)
+        self.assertIn("checked by <@9>", a)
+
+    def test_set_holder_by_an_administrator(self):
+        st = self.state(runner=lambda p, job=None: good_result(n=9, length=408000, sha256="cd" * 32), contributor_role=777)
+        admin = FakeInteraction(uid=9, name="admin", perms={"administrator": True})
+        self.run_async(bot.handle_check(st, admin, attachment=self.att(9), holder="Andrei Teodorescu"))
+        t = records.load(self.rec)
+        e = records.best_verified(t, 9)
+        arg = ui.entry_ref_arg(9, e)
+        card = ui.record_manage_card(t, "9", e, (9, True, True))
+        self.assertIn("Set holder: choose the member", ui.plain(card))                  # the member select (admins)
+        self.assertNotIn("Set holder", ui.plain(ui.record_manage_card(t, "9", e, (8, True, False))))
+        andrei = FakeMember(55, "andrei_t", display_name="Andrei T.")
+        other = FakeInteraction(uid=8, name="bob")
+        self.run_async(bot.handle_x(st, "rh", arg, andrei, other))
+        self.assertIn("Administrators only", other.private)
+        g = FakeInteraction(uid=9, name="admin", perms={"administrator": True})
+        g.guild = FakeGuild([FakeRole(777)])
+        self.run_async(bot.handle_x(st, "rh", arg, andrei, g))
+        e = records.best_verified(records.load(self.rec), 9)
+        self.assertEqual((e["submitter"], e["submitter_id"], e["checked_by_id"]), ("Andrei T.", "55", "9"))
+        self.assertEqual([r.id for r, _ in andrei.added], [777])           # the record holder gets the role
+        self.assertIn("Holder set", g.private)
+        d = "\n".join(ui.texts(ui.record_details_card(records.load(self.rec), "9")))
+        self.assertIn("checked by <@9>", d)
 
 
 if __name__ == "__main__":

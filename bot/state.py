@@ -31,6 +31,7 @@ class JobCtx:
         self.private = False       # the card is a direct message
         self.hid = None            # the row of this job in the history
         self.member, self.guild = None, None   # who sent it and where (to give the role later)
+        self.holder = None         # administrators: the word is this person's (the holder option of /check)
         self.trace = None          # Card: the small note in the channel of a private check
         self.audit = None          # Card: the copy in the audit channel
 

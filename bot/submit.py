@@ -106,11 +106,18 @@ async def do_submit(state, ctx, interaction):
         ctx.added = False
         ctx.extra = lines
         return lines
-    out = records.submit(cfg.records_path, res, ctx.user_name, ctx.source, submitter_id=ctx.user_id, label=job.name)
+    if ctx.holder:                                 # an administrator checks the word for somebody else
+        out = records.submit(cfg.records_path, res, ctx.holder, ctx.source, label=job.name,
+                             checked_by=ctx.user_name, checked_by_id=ctx.user_id)
+    else:
+        out = records.submit(cfg.records_path, res, ctx.user_name, ctx.source, submitter_id=ctx.user_id, label=job.name)
     lines = [_submit_text(out, res)]
     if out["status"] == "new_record":
         role_text = None
-        if cfg.contributor_role:
+        if out["for_other"]:
+            lines.append("Entered for %s (you are shown as the one who checked it); no Contributor role." %
+                         ui.safe_text(out["entry"]["submitter"], 60))
+        elif cfg.contributor_role:
             actor = await role_actor(state, ctx, interaction)
             role_text = (await grant_contributor(cfg, actor)) if actor is not None else \
                 "Contributor role not given: use the server (run the check there)."
@@ -118,9 +125,12 @@ async def do_submit(state, ctx, interaction):
             lines.append(role_text)
         if state.announce:                         # a private check gets no link: the card is a direct message
             rid = board.role_for_n(cfg.n_roles, res["n"])
+            e = out["entry"]
+            holder = (e["submitter"], e.get("submitter_id")) if out["for_other"] else None
             await safe(state.announce, ui.announcement_card(res["n"], res["length"], out["previous"], ctx.user_id,
                                                             ctx.user_name, job.name, res["sha256"],
-                                                            None if ctx.private else ctx.card.url, role_id=rid), rid)
+                                                            None if ctx.private else ctx.card.url, role_id=rid,
+                                                            holder=holder), rid)
     if out["status"] in ("new_record", "equal", "longer"):   # the table changed: the board goes under the announcement
         await board.refresh(state)
     ctx.added = out["status"] != "invalid"

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2 (2026-10-27)
+
+* Words checked for somebody else. A word of the same length as a claim turns it into a verified entry that keeps the
+  claim's holder; the person who ran the check is kept as `checked_by` / `checked_by_id`, gets no Contributor role, and
+  the announcement says "Record for n = N verified ... by HOLDER, checked by CHECKER". `/check ... holder: NAME`
+  (administrators only, implies `submit`) enters any word for NAME the same way.
+* *Set holder* (administrators, under *Manage entry* of a verified entry): a member select that makes a member the
+  holder of the entry (display name and id; the Contributor role for the record of its n).
+* The details and manage cards show who checked an entry. Tests in `tests/test_bot.py` (`TestOnBehalf`).
+
 ## v1.1 (2026-10-27)
 
 * `SUPERPERM_BOARD=1`: the table (the card of `/records`, with its select for one n) is kept as the last message of the

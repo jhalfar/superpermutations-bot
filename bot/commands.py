@@ -119,9 +119,11 @@ async def handle_job_button(state, act, jid, interaction):
         await handle_add(state, ctx, interaction)
 
 
-async def handle_check(state, interaction, attachment=None, url=None, submit=False, form=True, visibility=None):
+async def handle_check(state, interaction, attachment=None, url=None, submit=False, form=True, visibility=None, holder=None):
     """/check. Without a file and without a link it opens the form (form=False: it is the answer to the form itself and
     cannot open another one). One ephemeral answer for the user.
+    holder (administrators only): the word is this person's; a valid word is entered for them (submit implied) and the
+    administrator is shown as the one who checked it (records.submit checked_by).
     visibility 'public' (default for a user who never chose): one card in the channel. 'private': the card goes to the user by
     direct message and the channel gets only a small note (who, n, queued / running / finished). Run in a direct message with
     the bot (no server): the card is that conversation, nothing is posted on any server."""
@@ -135,6 +137,12 @@ async def handle_check(state, interaction, attachment=None, url=None, submit=Fal
     tmp = tempfile.mkdtemp(prefix="bot-", dir=cfg.workdir)
     job = ctx = ticker = None
     try:
+        holder = " ".join(str(holder or "").split())[:60]
+        if holder:
+            if not is_admin(interaction.user):
+                raise UserError("only administrators can check a word for somebody else.", title="Not allowed",
+                                hint="Leave out the holder option to check the word as your own.")
+            submit = True
         if attachment is None and url is None:
             raise UserError("there is nothing to check: no file and no link.", hint="Attach a file or paste a link.")
         if attachment is not None and url is not None:
@@ -169,6 +177,7 @@ async def handle_check(state, interaction, attachment=None, url=None, submit=Fal
         job.private = in_dm or vis == "private"
         ctx = JobCtx(job, None, source, interaction.user.id, user_name)
         ctx.private, ctx.member, ctx.guild = job.private, interaction.user, getattr(interaction, "guild", None)
+        ctx.holder = holder or None
         # ---- accepted: one card (bot token, editable for hours), a short ephemeral answer for the user
         if job.private and not in_dm:
             log.debug("job #%d is private: %s", job.id, name)          # file names of private jobs only at debug level

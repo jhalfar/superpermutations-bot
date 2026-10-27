@@ -3,6 +3,7 @@ remove), with the rights of owner, staff and admin and a line in the audit chann
 """
 import asyncio
 import logging
+from types import SimpleNamespace
 
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "checker"))  # check_any, registry, ...
@@ -14,7 +15,7 @@ import board
 import history
 import records
 import ui
-from cards import no_mentions, reply, safe, update_message, viewer_info
+from cards import display_name, no_mentions, reply, safe, update_message, viewer_info
 from downloads import clean_name
 
 log = logging.getLogger("superperm")
@@ -171,6 +172,29 @@ async def handle_x(state, kind, arg, value, interaction):
             await reply(interaction, ui.notice_card("Not allowed", "Only the owner of an entry or an administrator can rename it."))
         else:
             await interaction.response.send_modal(RenameModal(state, "h", row["hid"]))
+    elif kind == "rh":                                         # Set holder (administrators): value is the chosen Member
+        n, r = arg.split(":", 1)
+        if not admin:
+            await reply(interaction, ui.notice_card("Administrators only", "Only administrators can change the holder of an entry."))
+            return
+        table = records.load(cfg.records_path)
+        e = records.find(table, n, r)
+        if e is None:
+            await reply(interaction, gone())
+            return
+        is_record = records.best_verified(table, n) is e
+        name = display_name(value)
+        records.set_holder(cfg.records_path, n, r, name, value.id)
+        await board.refresh(state)
+        await audit_say(state, "<@%s> made <@%s> the holder of the entry of n = %s (%s letters)" % (
+            uid, value.id, n, "{:,}".format(e["length"])))
+        text = "<@%s> is now the holder of the entry of n = %s (%s letters)." % (value.id, n, "{:,}".format(e["length"]))
+        if is_record and cfg.contributor_role:
+            from submit import grant_contributor          # submit imports this module
+            role_text = await grant_contributor(cfg, SimpleNamespace(user=value, guild=getattr(interaction, "guild", None)))
+            if role_text:
+                text += "\n" + role_text.replace("you already have it", "they already have it")
+        await reply(interaction, ui.notice_card("Holder set", text, "valid"))
     elif kind in ("rm", "rd", "rr", "ry", "rn"):
         n, r = (arg, value) if kind == "rm" else arg.split(":", 1)
         table = records.load(cfg.records_path)

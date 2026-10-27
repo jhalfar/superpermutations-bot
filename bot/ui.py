@@ -694,6 +694,9 @@ def record_details_card(table, n, viewer=None):
             lines.append("name `%s`" % clean_name(e["label"]))
         if e.get("sha256"):
             lines.append("SHA-256 `%s`" % e["sha256"])
+        if e.get("checked_by") or e.get("checked_by_id"):
+            lines.append("checked by %s" % who(int(e["checked_by_id"]) if e.get("checked_by_id") else None,
+                                               e.get("checked_by")))
         src = str(e.get("source") or "")
         if src.startswith("https://") and " " not in src:
             lines.append("[source](<%s>)" % src[:300])
@@ -708,16 +711,23 @@ def record_details_card(table, n, viewer=None):
     return _view(COLOURS["record"], *items)
 
 
-def announcement_card(n, length, previous, user_id, submitter, filename, sha, url=None, role_id=None):
+def announcement_card(n, length, previous, user_id, submitter, filename, sha, url=None, role_id=None, holder=None):
     """the card in the records channel (gold). role_id: the role of this n (SUPERPERM_N_ROLES), mentioned on the first
-    line; the sender allows exactly that role to be pinged."""
+    line; the sender allows exactly that role to be pinged. holder = (name, user_id or None): the word is somebody else's
+    (a verified claim, or the holder option of /check); user_id/submitter are then the person who ran the check."""
     if previous:
         diff = "%s shorter than the previous record (%s, %s)" % (
             fmt_int(previous["length"] - length), fmt_int(previous["length"]), safe_text(previous["submitter"], 30))
     else:
         diff = "the first verified word for this n"
-    items = [_t("%s **New record for n = %d**\n%s letters %s %s\nby %s %s `%s` %s SHA-256 `%s`" % (
-        EMOJI["record"], n, fmt_int(length), DOT, diff, who(user_id, submitter), DOT, clean_name(filename), DOT, sha))]
+    if holder:
+        hname, hid = holder
+        by = "by %s %s checked by %s" % (who(int(hid) if hid else None, hname), DOT, who(user_id, submitter))
+        title = "Record for n = %d verified" % n
+    else:
+        by, title = "by %s" % who(user_id, submitter), "New record for n = %d" % n
+    items = [_t("%s **%s**\n%s letters %s %s\n%s %s `%s` %s SHA-256 `%s`" % (
+        EMOJI["record"], title, fmt_int(length), DOT, diff, by, DOT, clean_name(filename), DOT, sha))]
     if role_id:
         items.insert(0, _t("<@&%d>" % int(role_id)))
     if url:
@@ -898,6 +908,22 @@ class XSelect(ui.DynamicItem[ui.Select], template=r"sp:y:(?P<kind>[a-z]+):(?P<ar
         await HANDLERS["x"](self.kind, self.arg, self.item.values[0], interaction)
 
 
+class XUserSelect(ui.DynamicItem[ui.UserSelect], template=r"sp:u:(?P<kind>[a-z]+):(?P<arg>[0-9a-z:\-]+)"):
+    """a member select of the records cards (rh: set the holder of an entry); the value passed on is the Member."""
+
+    def __init__(self, kind, arg, placeholder="Choose a member"):
+        super().__init__(ui.UserSelect(custom_id="sp:u:%s:%s" % (kind, arg), placeholder=placeholder[:150],
+                                       min_values=1, max_values=1))
+        self.kind, self.arg = kind, str(arg)
+
+    @classmethod
+    async def from_custom_id(cls, interaction, item, match):
+        return cls(match["kind"], match["arg"])
+
+    async def callback(self, interaction):
+        await HANDLERS["x"](self.kind, self.arg, self.item.values[0], interaction)
+
+
 def when_unix(t):
     return "<t:%d:f>" % int(t)
 
@@ -994,6 +1020,9 @@ def record_manage_card(table, n, e, viewer):
         lines.append("**Name** `%s`" % clean_name(e["label"]))
     if e.get("sha256"):
         lines.append("SHA-256 `%s`" % e["sha256"])
+    if e.get("checked_by") or e.get("checked_by_id"):
+        lines.append("**Checked by** %s" % who(int(e["checked_by_id"]) if e.get("checked_by_id") else None,
+                                               e.get("checked_by")))
     btns = []
     if d:
         btns.append(XButton("rd", entry_ref_arg(n, e), "Delete", discord.ButtonStyle.danger))
@@ -1002,6 +1031,8 @@ def record_manage_card(table, n, e, viewer):
     items = [_t("%s **Manage entry** %s n = %s" % (EMOJI["record"], DOT, n)), _sep(), _t("\n".join(lines))]
     if btns:
         items.append(_row(*btns))
+    if admin and e["verified"]:                   # the holder joined the server: make them the holder of the entry
+        items.append(_row(XUserSelect("rh", entry_ref_arg(n, e), "Set holder: choose the member")))
     return _view(COLOURS["record"], *items)
 
 
@@ -1063,6 +1094,8 @@ def plain(view, names=None):
                 c = c.item if isinstance(c, ui.DynamicItem) else c
                 if isinstance(c, ui.Select):
                     parts.append("[ %s v ]  options: %s" % (c.placeholder, ", ".join(o.label for o in c.options)))
+                elif isinstance(c, ui.UserSelect):
+                    parts.append("[ %s v ]  (server members)" % c.placeholder)
                 else:
                     parts.append(button_text(c))
             out.append(pad + "  ".join(parts))

@@ -1,7 +1,7 @@
-"""discord_bot.py - Discord front end of superpermutations-bot v1.1.
+"""discord_bot.py - Discord front end of superpermutations-bot v1.2.
 
 Slash commands
-  /check [attachment | url] [submit]   check a recipe (*.splan.json.xz), a SPRA word (*.spra, *.spra.xz) or a word (*.txt, *.txt.xz), n <= 14;
+  /check [attachment | url] [submit] [holder]  check a recipe (*.splan.json.xz), a SPRA word (*.spra, *.spra.xz) or a word (*.txt, *.txt.xz), n <= 14;
                                        without options it opens a form (file upload or link)
   /queue                               the two lanes: running jobs with progress, waiting jobs with positions (only you see it)
   /cancel job_id                       cancel your own job (Manage Messages or Administrator: any job)
@@ -90,7 +90,8 @@ def build_client(state):
 
         async def setup_hook(self):
             state.sched.start()
-            self.add_dynamic_items(ui.JobButton, ui.PanelButton, ui.RecordsSelect, ui.SettingsSelect, ui.XButton, ui.XSelect)  # survive a restart
+            self.add_dynamic_items(ui.JobButton, ui.PanelButton, ui.RecordsSelect, ui.SettingsSelect, ui.XButton, ui.XSelect,
+                                   ui.XUserSelect)  # survive a restart
             await asyncio.to_thread(hist_try, "purge", history.purge, state.cfg.history_path, state.cfg.history_days)
             state.history_task = asyncio.ensure_future(history_loop(state))
             if state.cfg.audit_channel_id:
@@ -126,11 +127,12 @@ def build_client(state):
     @app_commands.describe(attachment="a .splan.json.xz recipe, .spra or .spra.xz word, .txt or .txt.xz word",
                            url="public file on github.com, raw.githubusercontent.com or gitlab.com",
                            submit="enter a valid word into the records table",
-                           visibility="public: the card is posted here; private: it comes by direct message (default: /settings)")
+                           visibility="public: the card is posted here; private: it comes by direct message (default: /settings)",
+                           holder="administrators: the word is this person's; it is entered for them (implies submit)")
     @where
     async def check(interaction: discord.Interaction, attachment: discord.Attachment = None, url: str = None,
-                    submit: bool = False, visibility: Literal["public", "private"] = None):
-        await handle_check(state, interaction, attachment, url, submit, visibility=visibility)
+                    submit: bool = False, visibility: Literal["public", "private"] = None, holder: str = None):
+        await handle_check(state, interaction, attachment, url, submit, visibility=visibility, holder=holder)
 
     @tree.command(name="history", description="Your recent checks (moderators: another user's)")
     @app_commands.describe(user="moderators only: show this user's checks")

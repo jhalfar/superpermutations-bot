@@ -69,13 +69,18 @@ def would_enter(table, n, length):
     return best is None or length < best["length"]
 
 
-def submit(path, result, submitter, source, date=None, note=None, submitter_id=None, label=None, now=None):
-    """add a checked result (the dict of check_any). Returns {status, entry, previous, claim}.
+def submit(path, result, submitter, source, date=None, note=None, submitter_id=None, label=None, now=None,
+           checked_by=None, checked_by_id=None):
+    """add a checked result (the dict of check_any). Returns {status, entry, previous, claim, for_other}.
     submitter is the display name; submitter_id (the Discord user id, optional) is kept in the entry next to it; label is
     the file name shown for the entry; a new entry also gets "time" (unix seconds, UTC) next to "date".
+    checked_by, checked_by_id: who ran the check when the word is somebody else's (the administrators' option holder of
+    /check: submitter is then the holder's name and has no id). A claim of the same length becomes verified and keeps its
+    holder; the person who ran the check goes into checked_by. for_other is True when the holder of the entry is not the
+    person who ran the check (no Contributor role, another announcement).
     status: invalid | duplicate | new_record | equal | longer.  The table file is only written for a new entry."""
     if not result.get("ok") or not result.get("sha256"):
-        return {"status": "invalid", "entry": None, "previous": None, "claim": None}
+        return {"status": "invalid", "entry": None, "previous": None, "claim": None, "for_other": False}
     n, length, sha = int(result["n"]), int(result["length"]), result["sha256"]
     date = date or time.strftime("%Y-%m-%d")
     with _lock:
@@ -83,18 +88,28 @@ def submit(path, result, submitter, source, date=None, note=None, submitter_id=N
         prev = best_verified(table, n)
         for e in table["records"].get(str(n), []):
             if e["length"] == length and e.get("sha256") in (sha, None):
-                if e.get("sha256") is None:       # a claim for this length: now verified
+                if e.get("sha256") is None:       # a claim for this length: now verified, its holder stays
                     e.update({"sha256": sha, "verified": True, "kind": result.get("kind", "word")})
+                    cid = checked_by_id or submitter_id
+                    own = bool(cid) and str(e.get("submitter_id") or "") == str(cid)
+                    if not own:
+                        e["checked_by"] = str(checked_by or submitter)[:80]
+                        if cid:
+                            e["checked_by_id"] = str(cid)
                     save(table, path)
                     status = "new_record" if prev is None or length < prev["length"] else                         ("equal" if length == prev["length"] else "longer")
-                    return {"status": status, "entry": e, "previous": prev, "claim": None}
-                return {"status": "duplicate", "entry": e, "previous": prev, "claim": None}
+                    return {"status": status, "entry": e, "previous": prev, "claim": None, "for_other": not own}
+                return {"status": "duplicate", "entry": e, "previous": prev, "claim": None, "for_other": False}
         e = {"length": length, "sha256": sha, "submitter": submitter, "source": source, "date": date,
              "verified": True, "kind": result.get("kind", "word")}
         if note:
             e["note"] = note
         if submitter_id:
             e["submitter_id"] = str(submitter_id)
+        if checked_by:
+            e["checked_by"] = str(checked_by)[:80]
+        if checked_by_id:
+            e["checked_by_id"] = str(checked_by_id)
         if label:
             e["label"] = str(label)[:80]
         e["time"] = int(now if now is not None else time.time())
@@ -113,7 +128,8 @@ def submit(path, result, submitter, source, date=None, note=None, submitter_id=N
         save(table, path)
         claim = best_known(table, n)
         return {"status": status, "entry": e, "previous": prev,
-                "claim": claim if claim and not claim["verified"] and claim["length"] < length else None}
+                "claim": claim if claim and not claim["verified"] and claim["length"] < length else None,
+                "for_other": bool(checked_by)}
 
 
 def ref(e):
@@ -161,6 +177,20 @@ def set_label(path, n, r, label):
         if e is None:
             return None
         e["label"] = str(label)[:80]
+        save(table, path)
+        return e
+
+
+def set_holder(path, n, r, name, user_id):
+    """make a member the holder of an entry (administrators; for a word checked for somebody before they joined the
+    server, or a verified claim): their display name and Discord id. -> the entry, or None if it is not there."""
+    with _lock:
+        table = load(path)
+        e = find(table, n, r)
+        if e is None:
+            return None
+        e["submitter"] = str(name)[:80]
+        e["submitter_id"] = str(user_id)
         save(table, path)
         return e
 

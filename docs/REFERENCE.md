@@ -95,6 +95,11 @@ thousands separators, a SHA-256 is in code format, the submitter is a mention th
   letters, not 154 bytes); a stored submitter is the display name, with the Discord user id kept next to it
   (`submitter_id`). If `SUPERPERM_SUBMIT_ROLE` is set, `submit` and *Add to records* work only for members with that role
   (also for administrators); the check itself runs for everyone and the card says why nothing was added.
+  A word of the same length as a claim of the table (no SHA-256 yet) turns the claim into a verified entry and keeps its
+  holder; whoever ran the check is stored as `checked_by` / `checked_by_id`, gets no Contributor role, and the
+  announcement reads "Record for n = N verified: ... by HOLDER, checked by CHECKER". `holder: NAME` (administrators
+  only, implies `submit`) does the same for any word: the entry is NAME's, without a user id, until an administrator
+  uses *Set holder*.
 * `/queue`: both lanes, the running job with a mini progress bar and a link to its card, the waiting jobs with positions
   (visible only to you).
 * `/cancel job_id`: cancel your own waiting or running job (the number is in the card title, "Check #12"). Users with
@@ -113,7 +118,9 @@ thousands separators, a SHA-256 is in code format, the submitter is a mention th
   after a confirmation card, and the removal is written to the audit channel. Any other entry can be removed by its
   submitter, a moderator or an administrator (a confirmation card too); its shown name (`label`) can be renamed by its
   submitter or an administrator. Ownership is the stored `submitter_id`; entries without one (the seed claims) can be
-  changed only by administrators. New entries get a `time` (unix seconds, UTC) next to the old `date`; entries and history
+  changed only by administrators. For a verified entry an administrator also gets *Set holder*, a member select: the
+  chosen member becomes the holder (display name and `submitter_id`; for the record of its n they get the Contributor
+  role), for example when the person whose word was checked joins the server. New entries get a `time` (unix seconds, UTC) next to the old `date`; entries and history
   rows show it as a Discord timestamp, old entries show their date.
 * `/records`: a card with an aligned monospace block (n, length, holder, status; "verified" = checked by this bot, "claim" =
   published, not checked here) and a select "Details for n = ..." that answers privately with the entries of that n.
