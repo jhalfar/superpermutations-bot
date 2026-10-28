@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3 (2026-10-28)
+
+* The buttons of a card from before a restart work again. `handle_job_button` rebuilds a job it no longer has in memory
+  from its row in the history (`commands.restore_ctx`, `history.get_job`): Details shows what the history keeps (file,
+  n, length, SHA-256, verdict, who checked it, whether it is in the table), Add to records enters a valid word that is
+  not in the table yet (only its submitter, as before; a private check asks first), Cancel says the job is not running.
+  "Job #N is gone" is left for jobs the history no longer has (`SUPERPERM_HISTORY_DAYS`). The word itself is still
+  never kept. Test `TestButtons.test_buttons_after_a_restart_use_the_history`.
+
 ## v1.2.1 (2026-10-28)
 
 * The alphabet of a word is shown sorted (`checker/core.py`, `alphabet_of`), not in the order in which the letters

@@ -60,7 +60,9 @@ implements is in docs/UI_DESIGN.md.
 4. **Buttons are `DynamicItem`s** (`JobButton`, `PanelButton`, `RecordsSelect`, `SettingsSelect`): the `custom_id` carries the job number
    (`sp:cancel:12`, `sp:add:12`, `sp:details:12`, `sp:publish:12`, `sp:keep:12`, `sp:audit:12`), `Client.add_dynamic_items` registers the three classes in `setup_hook`,
    and discord.py rebuilds the item from the message when it is pressed. So the buttons need no per-message view in memory,
-   and after a restart of the bot an old button reaches `handle_job_button`, which answers "Job #12 is gone" (the job
+   and after a restart of the bot an old button reaches `handle_job_button`, which rebuilds the job from its history row
+   (`restore_ctx`: n, length, SHA-256, verdict, submitter, added; Details shows `history_card`, Add to records works as
+   before, Cancel says the job is not running) and answers "Job #12 is gone" only when the history has no row (the job
    table is in memory only). `JobCtx` (per job, newest `card_keep` = 300) holds what the buttons need: the card, the
    result, the source, the submitter. Cancel: the submitter or Manage Messages or Administrator. Add to records: only the
    submitter, only a valid word that would enter the table (`records.would_enter`), the same code as `submit: true`
@@ -139,7 +141,7 @@ an idle machine is faster, so the limit is loose there; if a very loaded one tri
 
 ## Not done
 
-Persistence of the queue and of the job table (so an old card's Details button cannot show a result after a restart);
+Persistence of the queue (a restart drops waiting and running checks; finished ones keep working from the history);
 the queue position of a waiting card is refreshed only every `progress_s`; authentication of who may `submit`; n > 14;
 generators for n = 12, 13 recipes.
 

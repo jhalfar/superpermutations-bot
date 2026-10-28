@@ -84,6 +84,11 @@ def get(path, hid):
     return _run(path, "SELECT * FROM checks WHERE hid=?", (int(hid),), fetch="one")
 
 
+def get_job(path, job_id):
+    """the newest row of a job number (job numbers go on after a restart, so there is normally one), or None."""
+    return _run(path, "SELECT * FROM checks WHERE job_id=? ORDER BY hid DESC LIMIT 1", (int(job_id),), fetch="one")
+
+
 def count_user(path, user_id):
     return _run(path, "SELECT COUNT(*) AS c FROM checks WHERE user_id=?", (str(user_id),), fetch="one")["c"]
 

@@ -26,7 +26,7 @@ REDIRECT_HOSTS = ALLOWED_HOSTS | {"objects.githubusercontent.com", "release-asse
 ALLOWED_EXT = (".splan.json.xz", ".splan.json", ".spra.xz", ".spra", ".txt.xz", ".txt")
 LANES = ("fast", "slow")
 SLOW_FROM_N = 13          # n >= 13 goes to the slow lane
-VERSION = "1.2.1"
+VERSION = "1.3"
 BIG_HINT = "Put the file on github.com or gitlab.com and give the link instead."
 
 

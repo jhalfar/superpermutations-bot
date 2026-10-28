@@ -7,7 +7,9 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 import urllib.parse
+from types import SimpleNamespace
 
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "checker"))  # check_any, registry, ...
@@ -15,6 +17,7 @@ _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))  # python -I d
 
 import discord
 
+import history
 import magic
 import records
 import settings
@@ -86,15 +89,66 @@ async def handle_cancel(state, interaction, job_id):
     await reply(interaction, ui.notice_card("Cancelling", "Job #%d is being cancelled." % job.id, "cancelled"))
 
 
+def restore_ctx(state, jid):
+    """a job the bot no longer has in memory (restart, or an old card), rebuilt from its row in the history: enough for
+    Details and Add to records (n, length, SHA-256, verdict, who sent it, whether it was added). None if the history has
+    no row for it (never recorded, or past SUPERPERM_HISTORY_DAYS)."""
+    try:
+        row = history.get_job(state.cfg.history_path, jid)
+    except Exception as e:
+        log.warning("history lookup of job %d failed: %r", jid, e)
+        return None
+    if row is None:
+        return None
+    job = SimpleNamespace(id=jid, name=row["file_name"] or "", n=row["n"])
+    ctx = JobCtx(job, None, row["source"] or "", int(row["user_id"]), row["user_name"] or "")
+    ctx.private = row["visibility"] in ("private", "dm")
+    ctx.hid, ctx.added, ctx.restored, ctx.row = row["hid"], bool(row["added"]), True, row
+    if row["verdict"] == "valid" and row["n"] and row["length"] and row["sha256"]:
+        ctx.result = {"ok": True, "valid": True, "n": int(row["n"]), "length": int(row["length"]),
+                      "sha256": row["sha256"], "kind": row["kind"] or "word"}
+    return ctx
+
+
+def history_card(ctx):
+    """Details of a restored job: what the history keeps."""
+    r = ctx.row
+    when = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(r["t"])) if r["t"] else "-"
+    lines = ["Job #%d, from the history (the bot restarted since, so only this is kept):" % ctx.job.id,
+             "**File** `%s` %s **n** %s %s **Verdict** %s" % (ui.safe_text(r["file_name"], 60), ui.DOT, r["n"] if r["n"] else "-",
+                                                             ui.DOT, r["verdict"]),
+             "**Length** %s" % (ui.fmt_int(r["length"]) if r["length"] else "-"),
+             "**SHA-256** `%s`" % (r["sha256"] or "-"),
+             "**Checked** %s by %s %s **In the records** %s" % (when, ui.safe_text(r["user_name"], 40), ui.DOT,
+                                                                "yes" if r["added"] else "no")]
+    return ui.notice_card("Job #%d" % ctx.job.id, "\n".join(lines), "valid" if r["verdict"] == "valid" else "refused")
+
+
 async def handle_job_button(state, act, jid, interaction):
-    """Cancel / Add to records / Details on a job card."""
+    """Cancel / Add to records / Details on a job card. A job the bot no longer remembers is rebuilt from the history."""
     jid = int(jid)
     ctx = state.cards.get(jid)
     if ctx is None:
+        ctx = restore_ctx(state, jid)
+        if ctx is not None:
+            state.remember(ctx)
+    if ctx is None:
         await reply(interaction, ui.notice_card(
-            "Job #%d is gone" % jid, "The bot does not remember this job: it restarted, or the card is too old. "
-            "Send the file again if you still need a check."))
+            "Job #%d is gone" % jid, "The bot does not remember this job and its history has no row for it "
+            "(older than the history keeps). Send the file again if you still need a check."))
         return
+    if getattr(ctx, "restored", False):
+        if act == "cancel":
+            await reply(interaction, ui.notice_card("Not running", "Job #%d is not running any more." % jid))
+            return
+        if act in ("details", "audit"):
+            if act == "audit" and not is_admin(interaction.user):
+                await reply(interaction, ui.notice_card("Administrators only", "Only members with the Administrator permission can open this."))
+            elif act == "details" and ctx.private and interaction.user.id != ctx.user_id:
+                await reply(interaction, ui.notice_card("Only the submitter", "The result of a private check is for the person who sent it."))
+            else:
+                await reply(interaction, history_card(ctx), delete_after=DETAILS_TTL)
+            return
     if act == "cancel":
         await handle_cancel(state, interaction, jid)
     elif act == "details" and ctx.private and interaction.user.id != ctx.user_id:

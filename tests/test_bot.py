@@ -804,7 +804,7 @@ class TestButtons(Base):
             c = FakeInteraction()
             self.run_async(bot.handle_job_button(st, act, 99, c))
             self.assertIn("Job #99 is gone", c.private)
-            self.assertIn("restarted", c.private)
+            self.assertIn("history has no row", c.private)
         c = FakeInteraction()
         self.run_async(bot.handle_cancel(st, c, 99))
         self.assertIn("no waiting or running job #99", c.private)
@@ -813,6 +813,43 @@ class TestButtons(Base):
         c = FakeInteraction()
         self.run_async(bot.handle_job_button(st, "cancel", 1, c))
         self.assertIn("no waiting or running job #1", c.private)
+
+    def test_buttons_after_a_restart_use_the_history(self):
+        good = lambda p, job=None: good_result(n=9, length=408000, sha256="cd" * 32)
+        st = self.state(runner=good)
+        self.finished(st)                                         # job 1: valid, shorter than the table, not added
+        st2 = self.state(runner=good)                             # a restart: same files, nothing in memory
+        self.assertNotIn(1, st2.cards)
+
+        async def go():
+            c = FakeInteraction(uid=5, name="anybody")
+            await bot.handle_job_button(st2, "details", 1, c)
+            m = c.of("response")[0]
+            self.assertIn("from the history", m.text)
+            self.assertIn("cd" * 32, m.text)
+            self.assertIn("408,000", m.text)
+            c = FakeInteraction(uid=1, name="ann")
+            await bot.handle_job_button(st2, "cancel", 1, c)
+            self.assertIn("not running", c.private)
+            other = FakeInteraction(uid=2, name="bob")
+            await bot.handle_job_button(st2, "add", 1, other)
+            self.assertIn("Only the submitter", other.private)
+            self.assertIsNone(records.best_verified(records.load(self.rec), 9))
+            click = FakeInteraction(uid=1, name="ann")
+            await bot.handle_job_button(st2, "add", 1, click)
+            e = records.best_verified(records.load(self.rec), 9)
+            self.assertEqual((e["length"], e["sha256"], e["submitter_id"]), (408000, "cd" * 32, "1"))
+            self.assertIn("new record", click.private)
+            self.assertEqual(len(self.announced), 1)
+            again = FakeInteraction(uid=1, name="ann")
+            await bot.handle_job_button(st2, "add", 1, again)
+            self.assertIn("Already added", again.private)
+            st3 = self.state(runner=good)                         # another restart: the history says it was added
+            again = FakeInteraction(uid=1, name="ann")
+            await bot.handle_job_button(st3, "add", 1, again)
+            self.assertIn("Already added", again.private)
+            self.assertEqual(len(self.announced), 1)
+        self.run_async(go())
 
     def test_dynamic_items_dispatch_to_the_handlers(self):
         st = self.state()

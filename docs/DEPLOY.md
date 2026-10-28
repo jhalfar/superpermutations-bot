@@ -109,7 +109,9 @@ The checker keeps a bit table of n!/8 bytes.
 ## What is lost at a restart
 
 The queue and the job numbers are in memory. When the bot or the host restarts, waiting and running checks are dropped
-and users must send them again. The table (`records.json`) is in the volume and survives.
+and users must send them again. The table (`records.json`) and the history (`history.sqlite`) are in the volume and
+survive: the buttons of an older card (Details, Add to records) work from the history row of the job, for as long as
+the history keeps it (`SUPERPERM_HISTORY_DAYS`).
 
 ## GitHub Action from another repository
 

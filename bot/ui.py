@@ -13,7 +13,7 @@ check_limits(view) re-checks both numbers; the tests call it on every card.
 
 Buttons that act on a job, the panel button and the records select are DynamicItems: their custom_id carries the job
 number (sp:cancel:12), discord.py rebuilds them from the message when someone presses them, so they also work after a
-restart of the bot (the handler then says that the job is gone). The handlers are set by discord_bot.build_client (HANDLERS).
+restart of the bot (the handler then rebuilds the job from the history, commands.restore_ctx). The handlers are set by discord_bot.build_client (HANDLERS).
 """
 import math
 import re

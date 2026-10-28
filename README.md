@@ -149,7 +149,8 @@ Some tests need words that are not in this repository; they skip themselves and 
 ## Known limits
 
 - A restart of the bot drops the jobs that are waiting or running; users send them again. Job numbers and the history
-  carry over.
+  carry over, and the buttons of an older card work from the history (Details shows what it keeps; Add to records
+  enters a valid word that is not in the table yet).
 - Recipes exist only for n = 14, because the shorter words are small enough to send as they are (the n = 13 word is
   about 1.3 MB as `.spra.xz`). The recipe format `splan/1` is fixed ([docs/RECIPE.md](docs/RECIPE.md)).
 - By default anyone on the server can add a verified word to the table. Set `SUPERPERM_SUBMIT_ROLE` to limit it to a

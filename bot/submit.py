@@ -62,7 +62,8 @@ async def handle_add(state, ctx, interaction, confirmed=False):
     try:
         await interaction.response.defer(ephemeral=True)
         lines = await do_submit(state, ctx, interaction)
-        await ctx.card.update(lambda: state.card_view(ctx), wait=True)
+        if ctx.card is not None:                     # a job rebuilt from the history has no card to update
+            await ctx.card.update(lambda: state.card_view(ctx), wait=True)
         await reply(interaction, ui.notice_card("Records", "\n".join(lines), "valid"))
     finally:
         ctx.busy = False
@@ -129,7 +130,7 @@ async def do_submit(state, ctx, interaction):
             holder = (e["submitter"], e.get("submitter_id")) if out["for_other"] else None
             await safe(state.announce, ui.announcement_card(res["n"], res["length"], out["previous"], ctx.user_id,
                                                             ctx.user_name, job.name, res["sha256"],
-                                                            None if ctx.private else ctx.card.url, role_id=rid,
+                                                            None if ctx.private or ctx.card is None else ctx.card.url, role_id=rid,
                                                             holder=holder), rid)
     if out["status"] in ("new_record", "equal", "longer"):   # the table changed: the board goes under the announcement
         await board.refresh(state)
