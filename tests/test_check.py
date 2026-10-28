@@ -86,6 +86,21 @@ class TestWords(unittest.TestCase):
         self.assertEqual((r["n"], r["length"]), (11, 43930578))
         self.assertEqual(r["sha256"], "f7d3122f350d56d41945961f9abf36453420bd3068a3941b424f9c0447c7aef5")
 
+    def test_alphabet_sorted(self):
+        # 123121321 with 1 -> 3, 2 -> 1, 3 -> 2: first appearance 312, shown sorted; the SHA-256 is of the letters
+        d = tempfile.mkdtemp(prefix="alph-")
+        try:
+            p = os.path.join(d, "w3.txt")
+            with open(p, "wb") as f:
+                f.write(b"312313213\n")
+            self.assertEqual(core.alphabet_of(p), "123")
+            r = check_any.check_any(p, threads=1)
+            self.assertTrue(r["ok"])
+            self.assertEqual((r["n"], r["length"], r["alphabet"]), (3, 9, "123"))
+            self.assertEqual(r["sha256"], hashlib.sha256(b"312313213").hexdigest())
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
     @need_w10
     def test_bad_words(self):
         d = tempfile.mkdtemp(prefix="bad-")

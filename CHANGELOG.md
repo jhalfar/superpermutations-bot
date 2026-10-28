@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.1 (2026-10-28)
+
+* The alphabet of a word is shown sorted (`checker/core.py`, `alphabet_of`), not in the order in which the letters
+  first appear. The order only numbers the symbols for the checker; the SHA-256 is of the letters as they are and did
+  not depend on it. Test `TestWords.test_alphabet_sorted` in `tests/test_check.py`.
+
 ## v1.2 (2026-10-27)
 
 * Words checked for somebody else. A word of the same length as a claim turns it into a verified entry that keeps the

@@ -590,7 +590,7 @@ FIELD_HELP = {
     "valid": "every permutation occurs and the file holds nothing else",
     "ok": "valid, and every other check below passed (recipe footer, passes)",
     "length": "letters of the word (white space not counted)",
-    "alphabet": "the n symbols, in the order used for the hash",
+    "alphabet": "the n symbols of the word, sorted",
     "sha256": "SHA-256 of the letters, without line feeds",
     "missing": "permutations that never occur (0 for a superpermutation)",
     "foreign_bytes": "bytes that are not letters of the alphabet",

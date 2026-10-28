@@ -32,17 +32,12 @@ def _open(path):
 
 
 def alphabet_of(path, sample=1 << 24):
-    """the distinct symbols of the word, in order of first appearance (from the first `sample` bytes; a symbol that
-    appears later is counted by the checker as a foreign byte)."""
-    seen = []
+    """the distinct symbols of the word, sorted by byte value (from the first `sample` bytes; a symbol that appears
+    later is counted by the checker as a foreign byte). The order only numbers the symbols for the checker: the
+    SHA-256 is of the letters as they are, so it does not depend on it."""
     with _open(path) as f:
         data = f.read(sample)
-    for b in data:
-        if b in WHITE:
-            continue
-        if b not in seen:
-            seen.append(b)
-    return bytes(seen).decode("latin-1")
+    return bytes(sorted(set(data) - set(WHITE))).decode("latin-1")
 
 
 def check_stream(read, alph, exe=None, threads=2, mem_gb=None, max_letters=MAX_LETTERS, shard=None, progress=None):
